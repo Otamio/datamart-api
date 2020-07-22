@@ -64,6 +64,14 @@ class UnknownSubjectError(Exception):
     def get_error_dict(self):
         return {'Error': self.errors}
 
+class UnknownRegionLevels(Exception):
+    def __init__(self, unknown_levels: Set[str]):
+        super().__init__()
+        self.unknown_levels = list(unknown_levels)
+
+    def get_error_dict(self):
+        return {'Error': 'Unknown levels: ' + str(self.unknown_levels)}
+
 
 class VariableGetter:
     def get(self, dataset, variable):
@@ -83,8 +91,13 @@ class VariableGetter:
         except UnknownSubjectError as ex:
             return ex.get_error_dict(), 404
 
+        try:
+            region_levels = self.get_region_levels()
+        except UnknownRegionLevels as ex:
+            return ex.get_error_dict(), 400
+
         # print((dataset, variable, include_cols, exclude_cols, limit, regions))
-        return self.get_direct(dataset, variable, include_cols, exclude_cols, limit, regions)
+        return self.get_direct(dataset, variable, include_cols, exclude_cols, limit, regions, region_levels)
 
     def get_query_region_ids(self) -> Dict[str, List[str]]:
         # Returns all ids pf regions specifed in the URL in a dictionary based on region_type:
@@ -161,7 +174,25 @@ class VariableGetter:
         except ValueError:
             return 'N/A'
 
-    def get_direct(self, dataset, variable, include_cols, exclude_cols, limit, regions: Dict[str, List[str]] = {},
+    def get_region_levels(self) -> Set[str]:
+        levels: List[str] = request.args.getlist('region_level')
+        levels = [level.lower() for level in levels]
+
+        possible_levels =  { 'country', 'admin1', 'admin2', 'admin3' }
+
+        unknown: Set[str] = set()
+        result: Set[str] = set()
+        for level in levels:
+            if level in possible_levels:
+                result.add(level)
+            else:
+                unknown.add(level)
+        if unknown:
+            raise UnknownRegionLevels(unknown)
+
+        return result
+
+    def get_direct(self, dataset, variable, include_cols, exclude_cols, limit, regions: Dict[str, List[str]] = {}, region_levels: Set[str] = set(),
                    return_df=False):
         result = dal.query_variable(dataset, variable)
         if not result:
@@ -190,8 +221,8 @@ class VariableGetter:
         if location_qualifier and 'location_id' not in temp_cols:
             temp_cols = ['location_id'] + temp_cols
 
-        results = dal.query_variable_data(result['dataset_id'], result['property_id'], regions, qualifiers, limit,
-                                          temp_cols)
+        results = dal.query_variable_data(result['dataset_id'], result['property_id'], regions, region_levels, qualifiers, limit,
+                                          temp_cols, debug=True)
 
         result_df = pd.DataFrame(results, columns=temp_cols).fillna('')
 

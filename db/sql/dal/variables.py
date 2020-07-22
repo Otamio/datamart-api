@@ -185,7 +185,7 @@ def query_qualifiers(dataset_id, variable_qnode):
     return [Qualifier(**q) for q in qualifiers]
 
 
-def preprocess_places(places: Dict[str, List[str]], region_field) -> Tuple[str, str]:
+def preprocess_places(places: Dict[str, List[str]], place_levels: Set[str], region_field) -> Tuple[str, str]:
     joins: List[str] = []
     wheres: List[str] = []
 
@@ -197,20 +197,43 @@ def preprocess_places(places: Dict[str, List[str]], region_field) -> Tuple[str, 
     }
 
     for (type, ids) in places.items():
-        if not ids:
+        if not ids and not place_levels:
             continue
 
+        # In case place_levels are specified, we need to join.
+        # Theoretically if only country is specified, we need to join on country and admin1 and that's it, 
+        # but we join on admin2 and admin3, too, to keep the code simpler. If this turns out to be a performance
+        # problem, we'll improve this
         label = admin_edges[type]
         joins.append(f"LEFT JOIN edges e_{type} ON ({region_field}=e_{type}.node1 AND e_{type}.label='{label}')")
 
         quoted_ids = [f"'{id}'" for id in ids]
         ids_string = ', '.join(quoted_ids)
-        wheres.append(f"e_{type}.node2 IN ({ids_string})")
 
-    if not joins or not wheres:
+        if ids:
+            wheres.append(f"e_{type}.node2 IN ({ids_string})")
+
+    # Add a limit on place_levels
+    level_wheres = []
+    for level in place_levels:
+        if level == 'country':
+            level_wheres.append("e_country IS NOT NULL AND e_admin1.node2 IS NULL")  # Countries have no admin1
+        elif level == 'admin1':
+            level_wheres.append('e_admin1.node2 IS NOT NULL AND e_admin2.node2 IS NULL')  # Admin1 but no admin2
+        elif level == 'admin2':
+            level_wheres.append('e_admin2.node2 IS NOT NULL and e_admin3.node2 IS NULL') # Admin2 but no admin3
+        else: # level is admin3
+            level_wheres.append('e_admin3.node2 IS NOT NULL')
+
+    if not joins:
         return ('', '1=1')
+    if not wheres:
+        wheres = ['1=1']
+    if not level_wheres:
+        level_wheres = ['1=1']
+        
     join = '\n'.join(joins)
-    where = ' OR '.join(wheres)
+    where = '(' + ' OR '.join(wheres) + ') AND (' + ' OR '.join(level_wheres) + ')'
 
     return join, where
 
@@ -232,8 +255,8 @@ def preprocess_qualifiers(qualifiers: List[Qualifier], cols: List[str]) -> Tuple
     return ',\n\t\t'.join(fields), '\n'.join(joins)
 
 
-def query_variable_data(dataset_id, property_id, places: Dict[str, List[str]], qualifiers, limit, cols, debug=False) -> \
-List[Dict[str, Any]]:
+def query_variable_data(dataset_id, property_id, places: Dict[str, List[str]], place_levels: Set[str], qualifiers, limit, cols, debug=False) -> \
+        List[Dict[str, Any]]:
     dataset_id = sanitize(dataset_id)
     property_id = sanitize(property_id)
 
@@ -245,7 +268,7 @@ List[Dict[str, Any]]:
     else:
         raise ValueError("There are more than one location qualifiers for variable")
 
-    places_join, places_where = preprocess_places(places, location_node)
+    places_join, places_where = preprocess_places(places, place_levels, location_node)
     qualifier_fields, qualifier_joins = preprocess_qualifiers(qualifiers, cols)
 
     query = f"""
