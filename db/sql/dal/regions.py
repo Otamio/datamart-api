@@ -9,12 +9,16 @@ class Region:
     region_type: str
     country: str
     country_id: str
+    country_coordinate: Optional[str]
     admin1: Optional[str]
     admin1_id: Optional[str]
+    admin1_coordinate: Optional[str]
     admin2: Optional[str]
     admin2_id: Optional[str]
+    admin2_coordinate: Optional[str]
     admin3: Optional[str]
     admin3_id: Optional[str]
+    admin3_coordinate: Optional[str]
     region_coordinate: Optional[str]
 
     COUNTRY = 'Q6256'
@@ -28,12 +32,16 @@ class Region:
         self.region_type = kwargs['region_type']
         self.country = kwargs['country']
         self.country_id = kwargs['country_id']
+        self.country_coordinate = kwargs.get('country_coordinate')
         self.admin1 = kwargs.get('admin1')
         self.admin1_id = kwargs.get('admin1_id')
+        self.admin1_coordinate = kwargs.get('admin1_coordinate')
         self.admin2 = kwargs.get('admin2')
         self.admin2_id = kwargs.get('admin2_id')
+        self.admin2_coordinate = kwargs.get('admin2_coordinate')
         self.admin3 = kwargs.get('admin3')
         self.admin3_id = kwargs.get('admin3_id')
+        self.admin3_coordinate = kwargs.get('admin3_coordinate')
         self.region_coordinate = kwargs.get('region_coordinate')
 
         # country, admin1 and admin2 queries return both admin and country,admin1,admin2 fields.
@@ -276,7 +284,11 @@ def query_admins(admins: List[str] = [], admin_ids: List[str] = [], debug=False)
         e_country.node2 AS country_id, s_country_label.text AS country,
         e_admin1.node2 AS admin1_id, s_admin1_label.text AS admin1,
         e_admin2.node2 AS admin2_id, s_admin2_label.text AS admin2,
-        'POINT(' || c_coordinate.longitude || ', ' || c_coordinate.latitude || ')' as region_coordinate
+        'POINT(' || c_coordinate.longitude || ', ' || c_coordinate.latitude || ')' as region_coordinate,
+        'POINT(' || c_country_coordinate.longitude || ', ' || c_country_coordinate.latitude || ')' as country_coordinate,
+        'POINT(' || c_admin1_coordinate.longitude || ', ' || c_admin1_coordinate.latitude || ')' as admin1_coordinate,
+        'POINT(' || c_admin2_coordinate.longitude || ', ' || c_admin2_coordinate.latitude || ')' as admin2_coordinate,
+        'POINT(' || c_admin3_coordinate.longitude || ', ' || c_admin3_coordinate.latitude || ')' as admin3_coordinate
         FROM edges e_region
         JOIN edges e_region_label ON (e_region_label.node1=e_region.node1 AND e_region_label.label='label')
         JOIN strings s_region_label ON (e_region_label.id=s_region_label.edge_id)
@@ -298,10 +310,32 @@ def query_admins(admins: List[str] = [], admin_ids: List[str] = [], debug=False)
                 ON (s_admin2_label.edge_id=e_admin2_label.id)
             ON (e_admin2.node2=e_admin2_label.node1 AND e_admin2_label.label='label')
         ON (e_region.node1=e_admin2.node1 AND e_admin2.label='P2006190002')
+        LEFT JOIN edges e_admin3
+            JOIN edges e_admin3_label
+                JOIN strings s_admin3_label
+                ON (s_admin3_label.edge_id=e_admin3_label.id)
+            ON (e_admin3.node2=e_admin3_label.node1 AND e_admin3_label.label='label')
+        ON (e_region.node1=e_admin3.node1 AND e_admin3.label='P2006190003')
         LEFT JOIN edges e_coordinate
             JOIN coordinates c_coordinate
             ON (c_coordinate.edge_id=e_coordinate.id)
         ON (e_region.node1=e_coordinate.node1 AND e_coordinate.label='P625')
+        LEFT JOIN edges e_country_coordinate
+            JOIN coordinates c_country_coordinate
+            ON (c_country_coordinate.edge_id=e_country_coordinate.id)
+        ON (e_country.node1=e_country_coordinate.node1 AND e_country_coordinate.label='P625')
+        LEFT JOIN edges e_admin1_coordinate
+            JOIN coordinates c_admin1_coordinate
+            ON (c_admin1_coordinate.edge_id=e_admin1_coordinate.id)
+        ON (e_admin1.node1=e_admin1_coordinate.node1 AND e_admin1_coordinate.label='P625')
+        LEFT JOIN edges e_admin2_coordinate
+            JOIN coordinates c_admin2_coordinate
+            ON (c_admin2_coordinate.edge_id=e_admin2_coordinate.id)
+        ON (e_admin2.node1=e_admin2_coordinate.node1 AND e_admin2_coordinate.label='P625')
+        LEFT JOIN edges e_admin3_coordinate
+            JOIN coordinates c_admin3_coordinate
+            ON (c_admin3_coordinate.edge_id=e_admin3_coordinate.id)
+        ON (e_admin3.node1=e_admin3_coordinate.node1 AND e_admin3_coordinate.label='P625')
     WHERE e_region.label='P31' AND e_region.node2 IN ('Q6256', 'Q10864048', 'Q13220204', 'Q13221722') AND {where}
     '''
     if debug:
