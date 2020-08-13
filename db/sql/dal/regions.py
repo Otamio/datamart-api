@@ -323,19 +323,19 @@ def query_admins(admins: List[str] = [], admin_ids: List[str] = [], debug=False)
         LEFT JOIN edges e_country_coordinate
             JOIN coordinates c_country_coordinate
             ON (c_country_coordinate.edge_id=e_country_coordinate.id)
-        ON (e_country.node1=e_country_coordinate.node1 AND e_country_coordinate.label='P625')
+        ON (e_country.node2=e_country_coordinate.node1 AND e_country_coordinate.label='P625')
         LEFT JOIN edges e_admin1_coordinate
             JOIN coordinates c_admin1_coordinate
             ON (c_admin1_coordinate.edge_id=e_admin1_coordinate.id)
-        ON (e_admin1.node1=e_admin1_coordinate.node1 AND e_admin1_coordinate.label='P625')
+        ON (e_admin1.node2=e_admin1_coordinate.node1 AND e_admin1_coordinate.label='P625')
         LEFT JOIN edges e_admin2_coordinate
             JOIN coordinates c_admin2_coordinate
             ON (c_admin2_coordinate.edge_id=e_admin2_coordinate.id)
-        ON (e_admin2.node1=e_admin2_coordinate.node1 AND e_admin2_coordinate.label='P625')
+        ON (e_admin2.node2=e_admin2_coordinate.node1 AND e_admin2_coordinate.label='P625')
         LEFT JOIN edges e_admin3_coordinate
             JOIN coordinates c_admin3_coordinate
             ON (c_admin3_coordinate.edge_id=e_admin3_coordinate.id)
-        ON (e_admin3.node1=e_admin3_coordinate.node1 AND e_admin3_coordinate.label='P625')
+        ON (e_admin3.node2=e_admin3_coordinate.node1 AND e_admin3_coordinate.label='P625')
     WHERE e_region.label='P31' AND e_region.node2 IN ('Q6256', 'Q10864048', 'Q13220204', 'Q13221722') AND {where}
     '''
     if debug:

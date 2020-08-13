@@ -28,7 +28,7 @@ class _RegionCache:
         if not names and not ids:
             return
 
-        regions = dal.query_admins(admins = list(names), admin_ids = list(ids))
+        regions = dal.query_admins(admins = list(names), admin_ids = list(ids), debug=True)
         self._add_regions(regions)
 
     def get_regions(self, region_names: List[str]=[], region_ids: List[str]=[], region_type=None) -> Dict[str, Region]:

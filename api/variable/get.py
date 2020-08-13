@@ -262,7 +262,7 @@ class VariableGetter:
 
         # Add the other columns
         region_columns = ['country', 'country_id', 'country_coordinate', 
-                          'admin1', 'admin1_id', 'admin1_coodrinate',
+                          'admin1', 'admin1_id', 'admin1_coordinate',
                           'admin2', 'admin2_id', 'admin2_coordinate',
                           'admin3', 'admin3_id', 'admin3_coordinate',
                           'region_coordinate']
